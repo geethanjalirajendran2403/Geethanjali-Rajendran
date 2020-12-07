@@ -101,7 +101,7 @@ buy
 What would you like to have? 1 - espresso, 2 - latte, 3 - cappuccino, back - to main menu:
 espresso
 
-you want to (buy, fill, take, remaining, exit):
+You want to (buy, fill, take, remaining, exit):
 fill
 
 how many ml of water do you want to add:
@@ -125,5 +125,5 @@ The coffee machine has:
 125 of coffee 
 $0 of money
 
-Write action (buy, fill, take, remaining, exit):
+You want to (buy, fill, take, remaining, exit):
 exit
