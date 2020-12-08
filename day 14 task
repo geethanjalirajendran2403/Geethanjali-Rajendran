@@ -1,3 +1,4 @@
+import tkinter
 class CoffeeMachine:
     running = False
     def __init__(self, water, milk, coffee, money):
