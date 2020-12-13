@@ -1,1 +1,183 @@
+1.url_shortener
 
+ 2.templates
+
+  i.analytics.html
+
+    {% for link in links %}
+        <p class="text-left" style="cursor: pointer; margin: 20px; padding: 6px; border-radius: 8px; font-size: 22px; background-color: rgb(154, 155, 199); max-width: 800px;">
+            Original URL : {{ link.original_url }} | Short URL : {{ link.short_url }} | Views: {{ link.views }}
+        </p>
+    {% endfor %}
+
+  ii. index.html
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <form methods="POST" action="{{url_for('shortener.create_link')}}" style="max-width: 800px; margin: 50px;">  
+        <div class="form_group">
+            <label for="original-url" style="font-size: 28px;">
+            Original URL
+            </label>
+            <input type="text" class="form-control" placeholder="Enter URL" name="original-url" >
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+  iii. link_success.html
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <p class="text-left" style="cursor: pointer; margin: 20px; padding: 6px; border-radius: 8px; font-size: 22px; background-color: rgb(154, 155, 199); max-width: 800px;">
+        Original URL: {{ original_url }}
+    </p>
+    <p class="text-left" style="cursor: pointer; margin: 20px; padding: 6px; border-radius: 8px; font-size: 22px; background-color: rgb(154, 155, 199); max-width: 800px;">
+        Short URL: {{ url_for('shortener.redirect_to_url', short_url=new_url, _external=True) }}
+    </p>
+
+i.auth.py
+
+  from functols import wraps 
+  from flask import request, Response, current_app
+
+  def check_auth(username, password):
+      return username == current_app.config['ADMIN_USERNAME'] and password== current_app.config['ADMIN_PASSWORD']
+
+  def authenticate():
+      return Response(
+          'Could you verify your access level\n'
+          'You have to login with proper credentials', 401,
+          {'WWW-Authenticate': 'Basic realm = "Login Required"'})
+
+  def require_auth(f):
+      @wraps(f)
+      def decored(*args, **kwargs):
+          auth = request.authorization
+          if not auth or not check_auth(auth.username, auth.password):
+              return authenticate()
+          return f(*args, **kwargs)
+      return decored     
+
+ii.extensions.py
+
+    from flask_sqlalchemy import SQLALchemy 
+    db = SQLALchemy()
+
+    models.py
+
+    from .extensions import db     
+    from datetime import datetime 
+    import string
+    import random import choices
+
+    class link(db.Model):
+        id = db.Column(db.Integer, primary_keys = True)
+        original_url = db.Column(db.String(1024))
+        short_url = db.Column(db.String(6),unique=True)
+        views = db.Column(db.Integer, default=0)
+        date_created = db.Column(db.DateTime, default=datetime.now)
+
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.short_url = self.generate_short_link()
+
+        def generate_short_link(self):
+            characters = string.digits  + string.ascii_letters     
+            short_url = ''.join(choices(characters, k=6))
+
+            link = self.query.filter_by(short_url = short_url).first()
+
+            if link:
+                return self.generate_short_link()
+
+            return short_url
+
+iii.routes.py
+
+    from flask import Blueprint, render_template, request, redirect 
+
+    from .extensions import db
+    from .models import Link 
+
+    from .auth import require_auth
+
+    shortener = Blueprint('shortener',__name__)
+
+    @shortener.route('/<short_url>')
+    def redirect_to_url(short_url):
+        link = Link.query.filter_by(short_url = short_url).first_or_404()
+        link.views = link.views + 1
+        db.session.commit()
+        return redirect(link.original_url)
+
+    @shortener.route('/create_link', methods=['POST'])
+    def create_link():
+        original_url = request.form['original_url']
+        link = Link(original_url = original_url)
+        db.session.add(link)
+        db.session.commit
+
+        return render_template('link_success.html',
+            new_url = link.short_url, original_url = link.original_url)
+
+    @shortener.route('/')
+    def index():
+        return render_template('index.html')
+
+    @shortener.route('/analytics') 
+    @require_auth
+    def analytics():
+        links = Link.query.all()
+
+        return render_template('analytics.html', links = links)
+
+    @shortener.errorhandler(404)
+    def page_not_found(e):
+        return '<h1>Page Not Found 404</h1>',404               
+    
+iv._init_.py
+  
+    from flask import Flask
+    from .extensions import db 
+    from .routes import shortener
+
+    def create_app(config_file='settings.py'):
+        app= Flask(__name__)
+
+        app.config.from_pyfile(config_file)
+
+        db.init_app(app)
+
+        app.register_blueprint(shortener)
+
+        return app
+    
+ .env
+ 
+    DATABASE_URL=sqlite:///dbsqlite3
+    ADMIN_PASSWORD=password
+    ADMIN_USERNAME=admin
+
+.flaskenv
+
+    FLASK_APP=url_shortener
+    FLASK_ENV=development
+
+settings.py
+
+    import os 
+
+    #SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI='sqlite:///dbsqlite3'
+
+    SQLALCHEMY_TRACK_NOTIFICATIONS = False
+    ADMIN_USERNAME=os.environ.get('ADMIN_USERNAME')
+    ADMIN_PASSWORD=os.environ.get('ADMIN_PASSWORD')
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
