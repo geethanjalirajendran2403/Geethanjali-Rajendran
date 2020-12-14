@@ -1,6 +1,6 @@
-1.url_shortener
+1.url_shortener  (#inside url shortener we have to create files such as .env, .flaskenv, and under py extension we'll create auth.py, extensions.py,routes.py, __init__.py, settings.py)
 
- 2.templates
+ 2.templates   (#inside this foledr we have analytics.html,index.html,link_success.html)
 
   i.analytics.html
 
